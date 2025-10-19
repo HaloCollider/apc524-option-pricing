@@ -17,3 +17,7 @@ build-backend = "uv_build"
 dev = [
     "pre-commit>=4.3.0",
 ]
+
+tests = [
+    "pytest>=8.3.0",
+]
