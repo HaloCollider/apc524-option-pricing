@@ -1,0 +1,19 @@
+[project]
+name = "option-pricing"
+version = "0.1.0"
+description = "An option pricing library implemented in Python as an APC524 final project."
+readme = "README.md"
+authors = [
+    { name = "Yang Ou", email = "mrgpernatt@gmail.com" }
+]
+requires-python = ">=3.13"
+dependencies = []
+
+[build-system]
+requires = ["uv_build>=0.9.3,<0.10.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.3.0",
+]
