@@ -7,7 +7,10 @@ authors = [
     { name = "Yang Ou", email = "mrgpernatt@gmail.com" }
 ]
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+]
 
 [build-system]
 requires = ["uv_build>=0.9.3,<0.10.0"]
@@ -16,8 +19,30 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "pre-commit>=4.3.0",
+    "ruff>=0.6.9",
+]
+test = [
+    "pytest>=8.0",
+]
+docs = [
+    "sphinx>=7.0",
+    "furo>=2024.1.0",
 ]
 
-tests = [
-    "pytest>=8.3.0",
-]
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "lf"
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
