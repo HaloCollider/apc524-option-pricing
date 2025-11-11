@@ -338,6 +338,9 @@ docs = [
 test = [
     { name = "pytest" },
 ]
+tests = [
+    { name = "pytest" },
+]
 
 [package.metadata]
 requires-dist = [

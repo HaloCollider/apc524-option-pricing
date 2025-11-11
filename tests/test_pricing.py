@@ -2,6 +2,7 @@ import unittest
 
 import numpy as np
 import numpy.testing as npt
+
 from option_pricing import (
     black_scholes_greeks,
     black_scholes_price,

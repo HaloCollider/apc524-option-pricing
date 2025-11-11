@@ -21,7 +21,7 @@ dev = [
     "pre-commit>=4.3.0",
     "ruff>=0.6.9",
 ]
-test = [
+tests = [
     "pytest>=8.0",
 ]
 docs = [
