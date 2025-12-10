@@ -28,6 +28,11 @@ docs = [
     "sphinx>=7.0",
     "furo>=2024.1.0",
 ]
+notebooks = [
+    "jupyter>=1.0.0",
+    "matplotlib>=3.5.0",
+    "pandas>=2.0.0",
+]
 
 [tool.ruff]
 line-length = 100
