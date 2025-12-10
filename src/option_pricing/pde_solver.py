@@ -174,6 +174,29 @@ class Pde1DSolver:
         opt_type = option_type.lower()
         barr_type = barrier_type.lower()
 
+        # For knock-in options, use in-out parity
+        if "i" in barr_type:
+            # Price knock-in using: knock-in + knock-out = vanilla
+            from option_pricing.pricing import black_scholes_price
+            
+            # Price the vanilla option
+            vanilla_price = black_scholes_price(
+                spot=self.spot,
+                strike=strike,
+                maturity=self.maturity,
+                rate=self.rate,
+                volatility=self.volatility,
+                dividend_yield=self.dividend_yield,
+                option_type=opt_type,
+            )
+            
+            # Convert knock-in to knock-out and price it
+            knock_out_type = barr_type.replace("i", "o")
+            knock_out_price = self._solve(opt_type, strike, knock_out_type, scheme)
+            
+            # Return knock-in price via parity
+            return vanilla_price - knock_out_price
+
         # Initialize value at maturity (terminal condition)
         if opt_type == "call":
             V = np.maximum(self.S_grid - strike, 0.0)
@@ -188,19 +211,21 @@ class Pde1DSolver:
         N = len(self.S_grid)
         alpha, beta, gamma = self._build_coefficients()
 
-        # Construct tridiagonal matrices
+        # Construct tridiagonal matrices and solve backwards in time
         if scheme == "implicit":
             # Fully implicit: V^{n} = A^{-1} V^{n+1}
             A = self._build_implicit_matrix(alpha, beta, gamma)
-            for _ in range(self.time_steps):
-                V = self._time_step_implicit(V, A, barr_type, barrier_idx, opt_type, strike)
+            for step in range(self.time_steps):
+                current_time = self.maturity - (step + 1) * self.dt
+                V = self._time_step_implicit(V, A, barr_type, barrier_idx, opt_type, strike, current_time)
         else:  # crank-nicolson
             # Crank-Nicolson: (I - 0.5 dt L) V^{n} = (I + 0.5 dt L) V^{n+1}
             A_lhs = self._build_cn_lhs_matrix(alpha, beta, gamma)
             A_rhs = self._build_cn_rhs_matrix(alpha, beta, gamma)
-            for _ in range(self.time_steps):
+            for step in range(self.time_steps):
+                current_time = self.maturity - (step + 1) * self.dt
                 V = self._time_step_crank_nicolson(
-                    V, A_lhs, A_rhs, barr_type, barrier_idx, opt_type, strike
+                    V, A_lhs, A_rhs, barr_type, barrier_idx, opt_type, strike, current_time
                 )
 
         # Interpolate to spot price
@@ -297,6 +322,7 @@ class Pde1DSolver:
         barrier_idx: int,
         option_type: str,
         strike: float,
+        current_time: float,
     ) -> NDArray:
         """Perform one implicit time step."""
         N = len(V)
@@ -310,11 +336,11 @@ class Pde1DSolver:
         V_interior = spsolve(A, rhs)
         V_new = np.concatenate(([V[0]], V_interior, [V[-1]]))
 
-        # Apply barrier condition
-        V_new = self._apply_barrier_condition(V_new, barrier_type, barrier_idx)
+        # Update boundaries first
+        V_new = self._update_boundaries(V_new, option_type, strike, barrier_type, barrier_idx, current_time)
 
-        # Update boundaries
-        V_new = self._update_boundaries(V_new, option_type, strike)
+        # Apply barrier condition (this should override boundary updates if needed)
+        V_new = self._apply_barrier_condition(V_new, barrier_type, barrier_idx)
 
         return V_new
 
@@ -327,6 +353,7 @@ class Pde1DSolver:
         barrier_idx: int,
         option_type: str,
         strike: float,
+        current_time: float,
     ) -> NDArray:
         """Perform one Crank-Nicolson time step."""
         N = len(V)
@@ -341,11 +368,11 @@ class Pde1DSolver:
         V_interior = spsolve(A_lhs, rhs)
         V_new = np.concatenate(([V[0]], V_interior, [V[-1]]))
 
-        # Apply barrier condition
-        V_new = self._apply_barrier_condition(V_new, barrier_type, barrier_idx)
+        # Update boundaries first
+        V_new = self._update_boundaries(V_new, option_type, strike, barrier_type, barrier_idx, current_time)
 
-        # Update boundaries
-        V_new = self._update_boundaries(V_new, option_type, strike)
+        # Apply barrier condition (this should override boundary updates if needed)
+        V_new = self._apply_barrier_condition(V_new, barrier_type, barrier_idx)
 
         return V_new
 
@@ -358,35 +385,48 @@ class Pde1DSolver:
     ) -> NDArray:
         """Apply knock-out boundary condition at barrier."""
         V_new = V.copy()
-        if barrier_type in ("do", "di"):
-            # Down barrier: set values below barrier to zero for knock-out
-            if "o" in barrier_type:
-                V_new[: barrier_idx + 1] = 0.0
-        elif barrier_type in ("uo", "ui"):
-            # Up barrier: set values above barrier to zero for knock-out
-            if "o" in barrier_type:
-                V_new[barrier_idx:] = 0.0
+        if barrier_type in ("do",):
+            # Down-and-out: set values at and below barrier to zero
+            V_new[: barrier_idx + 1] = 0.0
+        elif barrier_type in ("uo",):
+            # Up-and-out: set values at and above barrier to zero
+            V_new[barrier_idx:] = 0.0
+        # Knock-in options: no special barrier condition during backward solve
+        # They are handled via in-out parity
         return V_new
 
     def _update_boundaries(
-        self, V: NDArray, option_type: str, strike: float
+        self, V: NDArray, option_type: str, strike: float, barrier_type: str, barrier_idx: int, current_time: float
     ) -> NDArray:
         """Update boundary conditions at S_min and S_max."""
         V_new = V.copy()
+        
+        # Discount factor from current time to maturity
+        discount = np.exp(-self.rate * current_time)
 
         # Lower boundary (S → 0)
-        if option_type == "call":
-            V_new[0] = 0.0
-        else:  # put
-            V_new[0] = strike * np.exp(-self.rate * self.dt)
+        # Don't override if the barrier is at the lower boundary for down knock-out
+        if barrier_type == "do" and barrier_idx <= 1:
+            # Barrier is at lower boundary, keep it at zero
+            pass
+        else:
+            if option_type == "call":
+                V_new[0] = 0.0
+            else:  # put
+                # Put value at S=0 is PV(K) = K * e^{-r*tau}
+                V_new[0] = strike * discount
 
         # Upper boundary (S → ∞)
-        if option_type == "call":
-            V_new[-1] = (
-                self.S_grid[-1] - strike * np.exp(-self.rate * self.dt)
-            )
-        else:  # put
-            V_new[-1] = 0.0
+        # Don't override if the barrier is at the upper boundary for up knock-out
+        if barrier_type == "uo" and barrier_idx >= len(V) - 2:
+            # Barrier is at upper boundary, keep it at zero
+            pass
+        else:
+            if option_type == "call":
+                # Call value at S=infinity is S - PV(K) = S - K * e^{-r*tau}
+                V_new[-1] = self.S_grid[-1] - strike * discount
+            else:  # put
+                V_new[-1] = 0.0
 
         return V_new
 
