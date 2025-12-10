@@ -289,6 +289,138 @@ def black_scholes_price(
     return np.asarray(price, dtype=np.float64)
 
 
+def black_scholes_digital_price(
+    spot: ArrayLike,
+    strike: ArrayLike,
+    maturity: ArrayLike,
+    rate: float,
+    volatility: float,
+    option_type: OptionType = "call",
+    dividend_yield: float = 0.0,
+) -> NDArray[np.float64]:
+    """Price a European cash-or-nothing digital option under Black-Scholes-Merton.
+
+    The payoff is ``1`` if the option finishes in-the-money and ``0`` otherwise.
+
+    Parameters
+    ----------
+    spot : ArrayLike
+        Spot price(s) of the underlying asset. Must be strictly positive.
+    strike : ArrayLike
+        Strike price(s). Must be strictly positive.
+    maturity : ArrayLike
+        Time to maturity in years. Must be strictly positive.
+    rate : float
+        Continuously compounded risk-free rate.
+    volatility : float
+        Annualized volatility. Must be strictly positive.
+    option_type : {"call", "put"}, default="call"
+        Selects the payoff direction.
+    dividend_yield : float, default=0.0
+        Continuous dividend or convenience yield.
+
+    Returns
+    -------
+    numpy.ndarray
+        Array of option values broadcast from the provided inputs.
+
+    Raises
+    ------
+    ValueError
+        If an input violates the constraints or the option type is invalid.
+    """
+
+    if option_type not in ("call", "put"):
+        raise ValueError("option_type must be either 'call' or 'put'.")
+
+    (
+        spot_arr,
+        strike_arr,
+        maturity_arr,
+        sigma,
+        sqrt_t,
+        d1,
+        d2,
+        discount_factor,
+        dividend_discount,
+    ) = _prepare_bsm_inputs(spot, strike, maturity, rate, volatility, dividend_yield)
+
+    if option_type == "call":
+        price = discount_factor * standard_normal_cdf(d2)
+    else:
+        price = discount_factor * standard_normal_cdf(-d2)
+
+    return np.asarray(price, dtype=np.float64)
+
+
+def black_scholes_digital_delta(
+    spot: ArrayLike,
+    strike: ArrayLike,
+    maturity: ArrayLike,
+    rate: float,
+    volatility: float,
+    option_type: OptionType = "call",
+    dividend_yield: float = 0.0,
+) -> NDArray[np.float64]:
+    """Compute the Black-Scholes-Merton delta of a digital option.
+
+    This corresponds to the derivative of the cash-or-nothing price with
+    respect to the underlying spot price.
+
+    Parameters
+    ----------
+    spot : ArrayLike
+        Spot price(s) of the underlying asset. Must be strictly positive.
+    strike : ArrayLike
+        Strike price(s). Must be strictly positive.
+    maturity : ArrayLike
+        Time to maturity in years. Must be strictly positive.
+    rate : float
+        Continuously compounded risk-free rate.
+    volatility : float
+        Annualized volatility. Must be strictly positive.
+    option_type : {"call", "put"}, default="call"
+        Selects the payoff direction.
+    dividend_yield : float, default=0.0
+        Continuous dividend or convenience yield.
+
+    Returns
+    -------
+    numpy.ndarray
+        Array of delta values broadcast from the provided inputs.
+
+    Raises
+    ------
+    ValueError
+        If an input violates the constraints or the option type is invalid.
+    """
+
+    if option_type not in ("call", "put"):
+        raise ValueError("option_type must be either 'call' or 'put'.")
+
+    (
+        spot_arr,
+        strike_arr,
+        maturity_arr,
+        sigma,
+        sqrt_t,
+        d1,
+        d2,
+        discount_factor,
+        dividend_discount,
+    ) = _prepare_bsm_inputs(spot, strike, maturity, rate, volatility, dividend_yield)
+
+    pdf_d2 = standard_normal_pdf(d2)
+    base = discount_factor * pdf_d2 / (spot_arr * sigma * sqrt_t)
+
+    if option_type == "call":
+        delta = base
+    else:
+        delta = -base
+
+    return np.asarray(delta, dtype=np.float64)
+
+
 def simulate_gbm_paths(
     spot: float,
     maturity: float,
