@@ -10,6 +10,8 @@ requires-python = ">=3.13"
 dependencies = [
     "numpy>=1.26",
     "scipy>=1.11",
+    "pandas>=2.0",
+    "matplotlib>=3.5",
 ]
 
 [build-system]
@@ -27,6 +29,9 @@ test = [
 docs = [
     "sphinx>=7.0",
     "furo>=2024.1.0",
+]
+notebooks = [
+    "jupyter>=1.0.0",
 ]
 
 [tool.ruff]

@@ -5,3 +5,8 @@ API Reference
    :members:
    :undoc-members:
    :show-inheritance:
+
+.. automodule:: option_pricing.api
+   :members:
+   :undoc-members:
+   :show-inheritance:
