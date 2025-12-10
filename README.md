@@ -104,9 +104,53 @@ The returned dictionary also includes histogram data (`hist_bin_edges` and `hist
 │   ├── api.py                # High-level delta hedging API
 │   ├── hedging/              # Delta hedging engine
 │   └── stats/                # Statistics utilities (histograms, moments)
+├── examples/                 # Example scripts
 ├── tests/                    # Unit tests
 ├── notebooks/                # Jupyter notebooks with experiments
 └── docs/                     # Sphinx documentation
+```
+
+## Examples
+
+The `examples/` directory contains runnable scripts demonstrating the package functionality.
+
+### Static Analysis
+
+After installing the package, run the basic example:
+
+```bash
+python examples/delta_hedging_example.py
+```
+
+This script will:
+1. Price a European call option using Black-Scholes
+2. Compute and display the option's Greeks (delta, gamma, vega, theta, rho)
+3. Run a Monte Carlo delta-hedging simulation
+4. Save a histogram of the P&L distribution to `examples/delta_hedging_pnl.png`
+
+You can customize parameters via command-line arguments:
+
+```bash
+python examples/delta_hedging_example.py --spot 100 --strike 110 --volatility 0.3 --n_paths 50000
+```
+
+### Animated Visualization
+
+For a more vivid demonstration, run the animation script:
+
+```bash
+python examples/delta_hedging_animation.py
+```
+
+This creates a real-time animation showing:
+- Multiple simulated stock price paths evolving over time
+- The option delta (hedge ratio) changing as stock price moves
+- The cumulative P&L of the delta-hedged portfolio
+
+Save the animation as a GIF or video:
+
+```bash
+python examples/delta_hedging_animation.py --output examples/hedging_animation.gif --n_paths 5 --fps 30
 ```
 
 ## License
