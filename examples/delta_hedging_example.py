@@ -23,8 +23,6 @@ The script will:
 import argparse
 
 import matplotlib.pyplot as plt
-import numpy as np
-
 from option_pricing import (
     black_scholes_greeks,
     black_scholes_price,
@@ -43,10 +41,19 @@ def parse_args():
     parser.add_argument("--rate", type=float, default=0.05, help="Risk-free interest rate")
     parser.add_argument("--volatility", type=float, default=0.2, help="Annualized volatility")
     parser.add_argument("--n_paths", type=int, default=10_000, help="Number of Monte Carlo paths")
-    parser.add_argument("--hedge_freq", type=int, default=252, help="Rebalancing frequency per year")
+    parser.add_argument(
+        "--hedge_freq", type=int, default=252, help="Rebalancing frequency per year"
+    )
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
-    parser.add_argument("--output", type=str, default="examples/delta_hedging_pnl.png", help="Output file for histogram")
-    parser.add_argument("--no-plot", action="store_true", help="Skip displaying the plot (still saves to file)")
+    parser.add_argument(
+        "--output",
+        type=str,
+        default="examples/delta_hedging_pnl.png",
+        help="Output file for histogram",
+    )
+    parser.add_argument(
+        "--no-plot", action="store_true", help="Skip displaying the plot (still saves to file)"
+    )
     return parser.parse_args()
 
 
@@ -136,7 +143,7 @@ def main():
         expiry=expiry,
         rate=rate,
         spot=spot,
-        sim_vol=volatility,   # Simulated volatility = mark volatility (no misspec)
+        sim_vol=volatility,  # Simulated volatility = mark volatility (no misspec)
         mark_vol=volatility,
         n_paths=n_paths,
         hedge_freq=hedge_freq,
@@ -160,14 +167,21 @@ def main():
     width = edges[1] - edges[0]
 
     ax.bar(centers, counts, width=width * 0.9, color="steelblue", edgecolor="white", alpha=0.8)
-    ax.axvline(result["pnl_mean"], color="red", linestyle="--", linewidth=2, label=f"Mean = {result['pnl_mean']:.3f}")
+    ax.axvline(
+        result["pnl_mean"],
+        color="red",
+        linestyle="--",
+        linewidth=2,
+        label=f"Mean = {result['pnl_mean']:.3f}",
+    )
     ax.axvline(0, color="black", linestyle="-", linewidth=1, alpha=0.5)
 
     ax.set_xlabel("P&L (normalized)", fontsize=12)
     ax.set_ylabel("Count", fontsize=12)
     ax.set_title(
         f"Delta-Hedged European Call P&L Distribution\n"
-        f"(S={spot}, K={strike}, σ={volatility:.0%}, {n_paths:,} paths, {hedge_freq}x/year hedging)",
+        f"(S={spot}, K={strike}, σ={volatility:.0%}, "
+        f"{n_paths:,} paths, {hedge_freq}x/year hedging)",
         fontsize=13,
     )
     ax.legend(fontsize=11)
@@ -184,4 +198,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
